@@ -1,0 +1,11 @@
+{
+    "name": "kirchbergerknorr/Kirchbergerknorr_GoogleBase",
+    "description": "Kirchbergerknorr GoogleBase",
+    "type": "magento-module",
+    "authors": [
+        {
+            "name": "Aleksey Razbakov",
+            "email": "ar@kirchbergerknorr.de"
+        }
+    ]
+}
