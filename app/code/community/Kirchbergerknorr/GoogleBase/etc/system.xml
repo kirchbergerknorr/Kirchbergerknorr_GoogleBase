@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <tabs>
+        <kirchbergerknorr translate="label">
+            <label>kirchbergerknorr</label>
+            <sort_order>1</sort_order>
+        </kirchbergerknorr>
+    </tabs>
+    <sections>
+        <kk_googlebase>
+            <label>Google Base</label>
+            <tab>kirchbergerknorr</tab>
+            <frontend_type>text</frontend_type>
+            <show_in_default>1</show_in_default>
+            <show_in_website>0</show_in_website>
+            <show_in_store>0</show_in_store>
+            <sort_order>1</sort_order>
+            <groups>
+                <general>
+                    <label>Google Base</label>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>0</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <sort_order>2</sort_order>
+                    <fields>
+                        <enabled translate="label">
+                            <label>Enabled</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>1</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </enabled>
+                        <cron translate="label">
+                            <label>Cron Schedule</label>
+                            <comment>
+                                <![CDATA[For help in creating expressions check this <a href="http://www.openjs.com/scripts/jslibrary/demos/crontab.php" target="_blank">site</a>.]]>
+                            </comment>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>4</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </cron>
+                        <export_path translate="label">
+                            <label>Export file path</label>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>1</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </export_path>
+                        <queue translate="label">
+                            <label>Max products queue size for processing</label>
+                            <frontend_type>text</frontend_type>
+                            <sort_order>2</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </queue>
+                        <log translate="label">
+                            <label>Log</label>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>1</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </log>
+                    </fields>
+                </general>
+            </groups>
+        </kk_googlebase>
+    </sections>
+</config>
