@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Observer
+ *
+ * @category    Kirchbergerknorr
+ * @package     Kirchbergerknorr_GoogleBase
+ * @author      Aleksey Razbakov <ar@kirchbergerknorr.de>
+ * @copyright   Copyright (c) 2014 kirchbergerknorr GmbH (http://www.kirchbergerknorr.de)
+ * @license     http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ */
+-->
+<config>
+    <modules>
+        <Kirchbergerknorr_GoogleBase>
+            <version>0.1.0</version>
+        </Kirchbergerknorr_GoogleBase>
+    </modules>
+    <default>
+        <kk_googlebase>
+            <general>
+                <enabled>1</enabled>
+                <cron>0 6 * * *</cron>
+                <queue>100</queue>
+                <export_path>/media/googlebase.csv</export_path>
+                <log>1</log>
+            </general>
+        </kk_googlebase>
+    </default>
+    <global>
+        <models>
+            <kk_google_base>
+                <class>Kirchbergerknorr_GoogleBase_Model</class>
+            </kk_google_base>
+        </models>
+    </global>
+    <crontab>
+        <jobs>
+            <kk_google_base_job>
+                <schedule>
+                    <config_path>kk_googlebase/general/cron</config_path>
+                </schedule>
+                <run>
+                    <model>kk_google_base/observer::export</model>
+                </run>
+            </kk_google_base_job>
+        </jobs>
+    </crontab>
+    <adminhtml>
+        <acl>
+            <resources>
+                <all>
+                    <title>Allow Everything</title>
+                </all>
+                <admin>
+                    <children>
+                        <system>
+                            <children>
+                                <config>
+                                    <children>
+                                        <kk_googlebase>
+                                            <title>Kirchbergerknorr GoogleBase</title>
+                                        </kk_googlebase>
+                                    </children>
+                                </config>
+                            </children>
+                        </system>
+                    </children>
+                </admin>
+            </resources>
+        </acl>
+    </adminhtml>
+</config>
