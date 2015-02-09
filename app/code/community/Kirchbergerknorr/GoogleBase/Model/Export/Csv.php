@@ -24,8 +24,7 @@ class Kirchbergerknorr_GoogleBase_Model_Export_Csv extends Kirchbergerknorr_Goog
 
         if (!$header) {
             foreach ($data as &$item) {
-                // TODO: strip_tags: trim(strip_tags($item), ';')
-                $item = str_replace(array("\r", "\n", "\""), array(' ', ' ', "''"), trim($item, ';'));
+                $item = str_replace(array("\r", "\n", "\""), array(' ', ' ', "''"), trim(strip_tags($item), ';'));
             }
 
             foreach ($this->_exportAttributeCodes as $code) {

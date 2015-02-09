@@ -78,10 +78,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 'color',
                 'price',
                 'special_price',
-                'image',
+                'image_small',
+                'image_big',
                 'deeplink',
                 'delivery_time',
-                'shipping_costs'
+                'shipping_costs_de',
+                'shipping_costs_at',
+                'shipping_costs_ch',
             );
             $this->_imageHelper = Mage::helper('catalog/image');
             $this->_exportAttributeCodes = $headerDefault;
@@ -234,14 +237,35 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         return $delivery;
     }
 
-    protected function _getShippingCosts($product)
+    protected function _getShippingCosts($product, $country = 'DE')
     {
-        if ($product->getIsBulky()) {
-            $shipping = 5;
-        } else if ($product->getPrice()>40){
-            $shipping = 0;
-        } else {
-            $shipping = 2.95;
+        switch ($country) {
+            case "DE":
+                if ($product->getIsBulky()) {
+                    $shipping = 5;
+                } else if ($product->getPrice()>40){
+                    $shipping = 0;
+                } else {
+                    $shipping = 2.95;
+                }
+
+                break;
+            case "AT":
+                if ($product->getIsBulky()) {
+                    $shipping = 10;
+                } else {
+                    $shipping = 3.95;
+                }
+
+                break;
+            case "CH":
+                if ($product->getIsBulky()) {
+                    $shipping = 25;
+                } else {
+                    $shipping = 20;
+                }
+
+                break;
         }
 
         return $shipping;
@@ -329,18 +353,17 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     'special_price' => $product->getSpecialPrice(),
                     'deeplink' => $product->getProductUrl(),
                     'delivery_time' => $this->_getDelivery($product),
-                    'shipping_costs' => $this->_getShippingCosts($product)
+                    'shipping_costs_de' => $this->_getShippingCosts($product, 'DE'),
+                    'shipping_costs_at' => $this->_getShippingCosts($product, 'AT'),
+                    'shipping_costs_ch' => $this->_getShippingCosts($product, 'CH'),
                 );
 
-                $image = '';
                 try {
-                    $image = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
-                    $image .= ' | '. (string) $this->_imageHelper->init($product, 'image')->resize('300');
+                    $productIndex['image_small'] = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
+                    $productIndex['image_big'] = (string) $this->_imageHelper->init($product, 'image')->resize('300');
                 } catch (Exception $e) {
 
                 }
-
-                $productIndex['image'] = $image;
 
                 $this->_writeItem($productIndex);
             }
