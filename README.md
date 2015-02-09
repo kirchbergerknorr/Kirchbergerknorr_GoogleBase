@@ -31,27 +31,27 @@ Read how to [Install Magento via Composer](https://medium.com/magento-developmen
 
 ## File Structure
 
-    * sku
-    * name
-    * short_description
-    * description
-    * category
-    * category_url
-    * manufacturer
-    * ean
-    * size
-    * color
-    * price
-    * special_price
-    * image_small
-    * image_big
-    * deeplink
-    * delivery_time
-    * shipping_costs_de
-    * shipping_costs_at
-    * shipping_costs_ch
-    
-    See example in `examples/googlebase.csv`
+* sku
+* name
+* short_description
+* description
+* category
+* category_url
+* manufacturer
+* ean
+* size
+* color
+* price
+* special_price
+* image_small
+* image_big
+* deeplink
+* delivery_time
+* shipping_costs_de
+* shipping_costs_at
+* shipping_costs_ch
+
+See example in `examples/googlebase.csv`
 
 ## File Names
 
