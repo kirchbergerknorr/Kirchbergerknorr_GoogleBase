@@ -152,7 +152,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected function _runNextProcess($file, $log)
     {
         $this->log("php $file >> $log &");
-        //shell_exec("php $file >> $log &");
+        shell_exec("php $file >> $log &");
     }
 
     /**
