@@ -47,7 +47,7 @@ HELP;
     {
         echo "Start\n";
         if (!$params || count($params) < 2) {
-            $this->export();
+            $this->export(false);
             return false;
         } else if (count($params) == 2) {
             $params[1] == 'restart';

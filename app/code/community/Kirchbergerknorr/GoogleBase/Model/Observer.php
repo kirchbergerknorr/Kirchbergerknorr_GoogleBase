@@ -51,7 +51,7 @@ class Kirchbergerknorr_GoogleBase_Model_Observer
         Mage::logException($e);
     }
 
-    public function export($observer = null, $restart = false)
+    public function export($observer = null, $restart = true)
     {
         if (!Mage::getStoreConfig('kk_googlebase/general/enabled')) {
             return false;

@@ -1,7 +1,7 @@
 <?php
 /**
  * Export Product
- *
+ * 
  * filename.csv             Exported CSV
  * filename.csv.processing  Partly exported CSV (currently under process)
  * filename.csv.run         File shows that process is running. File content is amount of found products.
@@ -152,7 +152,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected function _runNextProcess($file, $log)
     {
         $this->log("php $file >> $log &");
-        shell_exec("php $file >> $log &");
+        //shell_exec("php $file >> $log &");
     }
 
     /**
@@ -367,7 +367,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                 $this->_writeItem($productIndex);
             }
-
 
             unset($products);
             unset($productAttributes);
