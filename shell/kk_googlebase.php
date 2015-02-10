@@ -43,7 +43,6 @@ HELP;
 
     public function run($params = false)
     {
-        echo "Start\n";
         if (!$params || count($params) < 2) {
             $this->export(false);
             return false;
@@ -60,7 +59,6 @@ HELP;
                 $this->export(true);
             }
         }
-        echo "Finish\n";
     }
 }
 

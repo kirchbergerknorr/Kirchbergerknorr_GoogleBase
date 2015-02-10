@@ -16,7 +16,7 @@ class Kirchbergerknorr_GoogleBase_Model_Observer
     /*
      * Show debug bugtrace
      */
-    private $debug = false;
+    private $debug = true;
 
     public function log($message)
     {
@@ -58,8 +58,9 @@ class Kirchbergerknorr_GoogleBase_Model_Observer
         }
 
         try {
+            $storeId = Mage::getStoreConfig('kk_googlebase/general/store_id');
             $csv = Mage::getModel('kk_google_base/export_csv');
-            $csv->doExport(2, $restart);
+            $csv->doExport($storeId, $restart);
         } catch (Exception $e) {
             $this->logException($e);
         }

@@ -27,6 +27,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected $_categoryNames = null;
     protected $_productsToCategoryPath = null;
     protected $_exportAttributes = null;
+    protected $_storeId = null;
+    protected $_productCollection = null;
 
     abstract protected function _writeItem($data);
     abstract protected function _writeHeader($data);
@@ -97,10 +99,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         switch ($state)
         {
             case('started'):
-
-                $count = Mage::getModel('catalog/product')->getCollection()
-                    ->addFieldToFilter('visibility',4)
-                    ->addFieldToFilter('status', 1)->getSize();
+                $count = $this->getProductCollection()->getSize();
 
                 $this->log("Export started for {$count}");
 
@@ -157,29 +156,12 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         }
     }
 
-    /**
-     * Retrieve searchable products per store and set limit from configuration
-     *
-     * @param int $storeId
-     * @param array $staticFields
-     * @param array|int $productIds
-     * @param int $lastProductId
-     * @param int $limit
-     * @return array
-     */
-    protected function _getSearchableProducts($storeId, array $staticFields, $productIds = null, $lastProductId = 0,
-                                              $limit = 100)
-    {
-        $limit = Mage::getStoreConfig('kk_googlebase/general/queue');
-        return parent::_getSearchableProducts($storeId, $staticFields, $productIds, $lastProductId, $limit);
-    }
-
     public function getLastProductId()
     {
         $lastFileName = $this->_csvFileName.".last";
 
         if (!file_exists($lastFileName)) {
-            return 0;
+            return 1;
         } else {
             $lastProductId = file_get_contents($lastFileName);
             if ($lastProductId) {
@@ -273,6 +255,31 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         return $shipping;
     }
 
+    public function getProductCollection()
+    {
+        if (!$this->_productCollection) {
+            // todo: status attribute id status (87) load dynamically
+            $this->_productCollection = Mage::getModel("catalog/product")->getCollection()
+                ->setStoreId($this->_storeId)
+                ->addAttributeToSelect('*')
+                ->addAttributeToSelect('visibility')
+                ->addAttributeToFilter('status', 1)
+                ->addFieldToFilter('type_id', 'simple')
+                ->joinTable(array('p' => 'catalog/product_relation'), 'child_id=entity_id', array(
+                    'parent_id' => 'parent_id',
+                ), array(), 'left')
+                ->joinTable(array('ps' => 'catalog_product_entity_int'), 'entity_id=parent_id', array(
+                    'parent_status' => 'value',
+                ), array('attribute_id' => 87, 'store_id' => $this->_storeId), 'left')
+            ;
+
+            $this->_productCollection->getSelect()->where('ps.value = 1')->distinct(true);
+            Mage::getSingleton('cataloginventory/stock')->addInStockFilterToCollection($this->_productCollection);
+        }
+
+        return $this->_productCollection;
+    }
+
     /**
      * Export Product Data with Attributes
      * Output to CSV file
@@ -281,6 +288,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
      */
     public function doExport($storeId = null, $restart = false)
     {
+        if (!$storeId) {
+            throw new Exception("No store_id is specified");
+            $this->_storeId = $storeId;
+        }
+
+        $this->log('Started export for store_id: '.$storeId);
+
         if (!$restart && $this->isLocked())
         {
             $this->log("Another process is running! Aborted");
@@ -302,26 +316,19 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $this->_writeHeader($header);
             }
 
-            $lastProductId = $this->getLastProductId();
+            $lastProductId = $this->getLastProductId() + 1;
 
-            $products = $this->_getSearchableProducts($storeId, array('sku'), null, $lastProductId);
+            $pageSize = Mage::getStoreConfig('kk_googlebase/general/queue');
 
-            if (defined('KK_GOOGLEBASE_DEBUG_SKU')) {
-                $products = Mage::getModel("catalog/product")->getCollection()
-                    ->addAttributeToFilter('sku', KK_GOOGLEBASE_DEBUG_SKU);
-            }
+            $products = $this->getProductCollection()
+                ->setPageSize($pageSize)
+                ->setCurPage($lastProductId);
 
-            $this->_foundCount = count($products);
+            $this->_foundCount = $products->count();
 
             if (!$products) {
                 $this->setState('finished');
                 return false;
-            }
-
-            $productRelations   = array();
-            foreach ($products as $productData) {
-                $lastProductId = $productData['entity_id'];
-                $productAttributes[$productData['entity_id']] = $productData['entity_id'];
             }
 
             file_put_contents($this->_csvFileName.".last", $lastProductId);
@@ -329,24 +336,15 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             $this->_exportedCount = 0;
 
             foreach ($products as $productData) {
-                if (!isset($productAttributes[$productData['entity_id']])) {
-                    if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        $this->log('Skipped as no data');
-                    }
-                    continue;
-                }
-
                 $product = Mage::getModel("catalog/product");
                 $product->setStoreId($storeId);
                 $product->load($productData['entity_id']);
 
                 $parentProduct = null;
-                $parentIds = Mage::getResourceSingleton('catalog/product_type_configurable')
-                    ->getParentIdsByChild($productData['entity_id']);
-                if ($parentIds) {
+                if ($productData['parent_id']) {
                     $parentProduct = Mage::getModel('catalog/product');
                     $parentProduct->setStoreId($storeId);
-                    $parentProduct->load($parentIds[0]);
+                    $parentProduct->load($productData['parent_id']);
                 }
 
                 if ($product->getTypeID() != 'simple') {
@@ -356,9 +354,25 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     continue;
                 }
 
-                if ($product->getStatus() != 1 || ($parentProduct && $parentProduct->getStatus() !== 1)) {
+                if ($product->getStatus() != 1 || ($parentProduct && $parentProduct->getStatus() != 1)) {
                     if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        $this->log($productData['sku'].' skipped as disabled');
+                        if ($product->getStatus() != 1) {
+                            $this->log($productData['sku'].' skipped as disabled');
+                        } else {
+                            if ($parentProduct) {
+                                $this->log('configurable: '.$productData['parent_id']);
+                                $this->log($productData['sku'].' skipped as no configurable');
+                            } else {
+                                $this->log($productData['sku'].' skipped as configurable disabled');
+                            }
+                        }
+                    }
+                    continue;
+                }
+
+                if (!$parentProduct && $product->getVisibility() !== 4) {
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log($productData['sku'].' skipped as invisible');
                     }
                     continue;
                 }
@@ -376,6 +390,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                 $productIndex = array(
                     'type' => $product->getTypeID(),
+                    'visibility' => $product->getVisibility(),
+                    'status' => $product->getStatus(),
                     'sku' => $productData['sku'],
                     'name' => $product->getName(),
                     'short_description' => $product->getShortDescription(),
@@ -402,9 +418,15 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['size'] = '';
                 }
 
+                if ($productIndex['color'] && $productIndex['color'][0] == '-') {
+                    $productIndex['color'] = '';
+                }
+
                 if ($parentProduct) {
                     $productIndex['parent_id'] = $parentProduct->getId();
-                    $productIndex['parent_status'] =  $parentProduct->getStatus();
+                    $productIndex['parent_status'] = $parentProduct->getStatus();
+
+                    $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
                     if (!$productIndex['image_small']) {
                         $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
@@ -415,6 +437,15 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                     if (!$productIndex['category']) {
                         $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
+                        $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
+                    }
+
+                    if (strlen($productIndex['short_description']) < 2) {
+                        $productIndex['short_description'] = $parentProduct->getShortDescription();
+                    }
+
+                    if (strlen($productIndex['description']) < 2) {
+                        $productIndex['description'] = $parentProduct->getDescription();
                     }
                 }
 

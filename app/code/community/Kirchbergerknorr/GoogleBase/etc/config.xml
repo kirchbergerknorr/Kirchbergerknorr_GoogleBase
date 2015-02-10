@@ -20,6 +20,7 @@
         <kk_googlebase>
             <general>
                 <enabled>1</enabled>
+                <store_id>2</store_id>
                 <cron>0 6 * * *</cron>
                 <queue>100</queue>
                 <export_path>/media/googlebase.csv</export_path>
