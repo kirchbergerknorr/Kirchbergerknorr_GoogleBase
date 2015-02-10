@@ -437,8 +437,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
                     }
 
-                    $productIndex['image_small'] = $parentProduct->getProductUrl();
-
                     if (!$productIndex['category']) {
                         $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
                         $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
