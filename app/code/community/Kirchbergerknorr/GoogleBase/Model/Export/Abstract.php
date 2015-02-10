@@ -393,7 +393,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $this->_exportedCount += 1;
 
                 $productIndex = array(
-                    'type' => $product->getTypeID(),
+                    'id' => $product->getId(),
+                    'type' => $product->getTypeId(),
                     'visibility' => $product->getVisibility(),
                     'status' => $product->getStatus(),
                     'sku' => $productData['sku'],
@@ -406,8 +407,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     'ean' => $product->getIntersysEan(),
                     'size' => $product->getAttributeText('intersys_size'),
                     'color' => $product->getAttributeText('intersys_color'),
-                    'price' => $product->getPrice(),
-                    'special_price' => $product->getSpecialPrice(),
+                    'price' => Mage::helper('tax')->getPrice($product, $product->getPrice()),
+                    'special_price' => Mage::helper('tax')->getPrice($product, $product->getFinalPrice()),
                     'deeplink' => $product->getProductUrl(),
                     'delivery_time' => $this->_getDelivery($product),
                     'shipping_costs_de' => $this->_getShippingCosts($product, 'DE'),
@@ -432,10 +433,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                     $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
-                    if (!$productIndex['image_small']) {
-                        $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
-                        $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
-                    }
+                    // todo: check if simple product picture is not a placeholder
+                    $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
+                    $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
 
                     if (!$productIndex['category']) {
                         $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
