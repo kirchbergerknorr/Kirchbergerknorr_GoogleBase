@@ -209,13 +209,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         $delivery = '';
 
         if($state == 'state_green') {
-            $delivery = 'Verfügbar';
+            $delivery = 'Verfügbar - Lieferzeit 1-3 Tage';
         } elseif($state == 'state_blue_intersys') {
-            $delivery = 'Lieferbar ab ' . Mage::helper('core')->formatDate($product->getIntersysDeliverydate(), 'medium');
+            $delivery = 'Lieferzeit ' . Mage::helper('core')->formatDate($product->getIntersysDeliverydate(), 'medium');
         } elseif($state == 'state_blue_teamalpin') {
-            $delivery = 'Lieferbar ab ' . $product->getAttributeText('teamalpin_deliverytime');
+            $delivery = 'Lieferzeit ' . $product->getAttributeText('teamalpin_deliverytime');
         } elseif($state == 'state_red') {
-            $delivery = 'Lieferung innerhalb einer Woche';
+            $delivery = 'Lieferzeit 5-7 Tage';
         }
 
         return $delivery;
