@@ -24,7 +24,7 @@ class Kirchbergerknorr_GoogleBase_Model_Export_Csv extends Kirchbergerknorr_Goog
 
         if (!$header) {
             foreach ($data as &$item) {
-                $item = str_replace(array("\r", "\n", "\"", ";"), array(' ', ' ', "''", '\;'), trim(strip_tags($item), ';'));
+                $item = str_replace(array("\r", "\n", "\""), array(' ', ' ', "''"), trim(strip_tags($item), ';'));
             }
 
             if (defined('KK_GOOGLEBASE_DEBUG')) {
@@ -42,7 +42,7 @@ class Kirchbergerknorr_GoogleBase_Model_Export_Csv extends Kirchbergerknorr_Goog
             $orderedArray = $data;
         }
 
-        $row = implode(';', $orderedArray)."\n";
+        $row = '"'.implode('";"', $orderedArray).'"'."\n";
         file_put_contents($this->_csvFileName.".processing", $row, FILE_APPEND);
     }
 
