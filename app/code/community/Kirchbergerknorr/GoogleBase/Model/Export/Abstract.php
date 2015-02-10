@@ -431,6 +431,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['parent_id'] = $parentProduct->getId();
                     $productIndex['parent_status'] = $parentProduct->getStatus();
 
+                    $productIndex['price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getPrice());
+                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getFinalPrice());
+
                     $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
                     // todo: check if simple product picture is not a placeholder
