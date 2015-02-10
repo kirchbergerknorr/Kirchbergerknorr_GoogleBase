@@ -27,6 +27,10 @@ class Kirchbergerknorr_GoogleBase_Model_Export_Csv extends Kirchbergerknorr_Goog
                 $item = str_replace(array("\r", "\n", "\""), array(' ', ' ', "''"), trim(strip_tags($item), ';'));
             }
 
+            if (defined('KK_GOOGLEBASE_DEBUG')) {
+                print_r($data);
+            }
+
             foreach ($this->_exportAttributeCodes as $code) {
                 if (array_key_exists($code, $data)) {
                     $orderedArray[] = $data[$code];

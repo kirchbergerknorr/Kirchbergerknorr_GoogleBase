@@ -152,7 +152,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected function _runNextProcess($file, $log)
     {
         $this->log("php $file >> $log &");
-        shell_exec("php $file >> $log &");
+        if (!defined('KK_GOOGLEBASE_DEBUG')) {
+            shell_exec("php $file >> $log &");
+        }
     }
 
     /**
@@ -304,6 +306,11 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
             $products = $this->_getSearchableProducts($storeId, array('sku'), null, $lastProductId);
 
+            if (defined('KK_GOOGLEBASE_DEBUG_SKU')) {
+                $products = Mage::getModel("catalog/product")->getCollection()
+                    ->addAttributeToFilter('sku', KK_GOOGLEBASE_DEBUG_SKU);
+            }
+
             $this->_foundCount = count($products);
 
             if (!$products) {
@@ -323,22 +330,52 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
             foreach ($products as $productData) {
                 if (!isset($productAttributes[$productData['entity_id']])) {
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log('Skipped as no data');
+                    }
                     continue;
                 }
-
-                $this->_lastProductId = $productData['entity_id'];
 
                 $product = Mage::getModel("catalog/product");
                 $product->setStoreId($storeId);
                 $product->load($productData['entity_id']);
 
+                $parentProduct = null;
+                $parentIds = Mage::getResourceSingleton('catalog/product_type_configurable')
+                    ->getParentIdsByChild($productData['entity_id']);
+                if ($parentIds) {
+                    $parentProduct = Mage::getModel('catalog/product');
+                    $parentProduct->setStoreId($storeId);
+                    $parentProduct->load($parentIds[0]);
+                }
+
+                if ($product->getTypeID() != 'simple') {
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log($productData['sku']. ' skipped as not simple');
+                    }
+                    continue;
+                }
+
+                if ($product->getStatus() != 1 || ($parentProduct && $parentProduct->getStatus() !== 1)) {
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log($productData['sku'].' skipped as disabled');
+                    }
+                    continue;
+                }
+
+                $this->_lastProductId = $productData['entity_id'];
+
                 if (!$this->_isExportableProduct($product)) {
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log($productData['sku'].' skipped as not exportable');
+                    }
                     continue;
                 }
 
                 $this->_exportedCount += 1;
 
                 $productIndex = array(
+                    'type' => $product->getTypeID(),
                     'sku' => $productData['sku'],
                     'name' => $product->getName(),
                     'short_description' => $product->getShortDescription(),
@@ -358,11 +395,27 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     'shipping_costs_ch' => $this->_getShippingCosts($product, 'CH'),
                 );
 
-                try {
-                    $productIndex['image_small'] = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
-                    $productIndex['image_big'] = (string) $this->_imageHelper->init($product, 'image')->resize('300');
-                } catch (Exception $e) {
+                $productIndex['image_small'] = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
+                $productIndex['image_big'] = (string) $this->_imageHelper->init($product, 'image')->resize('300');
 
+                if ($productIndex['size'] && $productIndex['size'][0] == '-') {
+                    $productIndex['size'] = '';
+                }
+
+                if ($parentProduct) {
+                    $productIndex['parent_id'] = $parentProduct->getId();
+                    $productIndex['parent_status'] =  $parentProduct->getStatus();
+
+                    if (!$productIndex['image_small']) {
+                        $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
+                        $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
+                    }
+
+                    $productIndex['image_small'] = $parentProduct->getProductUrl();
+
+                    if (!$productIndex['category']) {
+                        $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
+                    }
                 }
 
                 $this->_writeItem($productIndex);

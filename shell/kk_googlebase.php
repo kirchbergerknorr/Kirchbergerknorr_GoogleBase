@@ -18,8 +18,6 @@ class Kirchbergerknorr_Shell_GoogleBase extends Mage_Shell_Abstract
 
     public function export($restart = false)
     {
-        define('KK_GOOGLEBASE_ECHO_LOGS', true);
-
         if (!Mage::getStoreConfig('kk_googlebase/general/enabled')) {
             $this->log('Kirchbergerknorr_GoogleBase is disabled');
             return false;
@@ -49,9 +47,18 @@ HELP;
         if (!$params || count($params) < 2) {
             $this->export(false);
             return false;
-        } else if (count($params) == 2) {
-            $params[1] == 'restart';
-            $this->export(true);
+        } else {
+            define('KK_GOOGLEBASE_ECHO_LOGS', true);
+
+            if ($params[1] == 'restart') {
+                $this->export(true);
+            } elseif ($params[1] == 'debug') {
+                define('KK_GOOGLEBASE_DEBUG', true);
+                if (isset($params[2])) {
+                    define('KK_GOOGLEBASE_DEBUG_SKU', $params[2]);
+                }
+                $this->export(true);
+            }
         }
         echo "Finish\n";
     }
