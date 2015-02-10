@@ -273,6 +273,10 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 ), array('attribute_id' => 87, 'store_id' => $this->_storeId), 'left')
             ;
 
+            if (defined('KK_GOOGLEBASE_DEBUG_SKU')) {
+                $this->_productCollection->addAttributeToFilter('sku', KK_GOOGLEBASE_DEBUG_SKU);
+            }
+
             $this->_productCollection->getSelect()->where('ps.value = 1')->distinct(true);
             Mage::getSingleton('cataloginventory/stock')->addInStockFilterToCollection($this->_productCollection);
         }
