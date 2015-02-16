@@ -4,8 +4,6 @@
  * 
  * filename.csv             Exported CSV
  * filename.csv.processing  Partly exported CSV (currently under process)
- * filename.csv.run         File shows that process is running. File content is amount of found products.
- * filename.csv.thread      Log file
  * filename.csv.last        Last exported ProductId
  * filename.csv.locked      Lock to block parallel processes. File content is datetime of start.
  *
@@ -22,6 +20,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected $_lastProductId;
     protected $_exportedCount;
     protected $_foundCount;
+    protected $_totalCount;
     protected $_deliveryBlock;
     protected $_exportAttributeCodes = null;
     protected $_categoryNames = null;
@@ -99,9 +98,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         switch ($state)
         {
             case('started'):
-                $count = $this->getProductCollection()->getSize();
-
-                $this->log("Export started for {$count}");
+                $this->_totalCount = $this->getProductCollection()->getSize();
+                $this->log("Export started for {$this->_totalCount}");
 
                 if (file_exists($this->_csvFileName)) {
                     unlink($this->_csvFileName);
@@ -110,17 +108,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $this->log("Filename: {$this->_csvFileName}");
 
                 file_put_contents($this->_csvFileName.".processing", '');
-                file_put_contents($this->_csvFileName.".run", $count);
-                file_put_contents($this->_csvFileName.".thread", '');
                 break;
 
             case('continue'):
 
-                $this->log("Statistics: found: ".$this->_foundCount.", exported:".$this->_exportedCount);
-                if (file_exists($this->_csvFileName.".run")) {
-                    $this->log("Continue from {$this->_lastProductId}");
+                if (file_exists($this->_csvFileName.".processing")) {
                     $file = Mage::getBaseDir().'/shell/kk_googlebase.php';
-                    $this->_runNextProcess($file, $this->_csvFileName.".thread");
+                    $this->_runNextProcess($file);
                 } else {
                     $this->log("Continue skipped");
                 }
@@ -129,7 +123,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             case('finished'):
 
                 // Remove all service files
-                foreach (array('.run', '.locked', '.last') as $ext) {
+                foreach (array('.locked', '.last') as $ext) {
                     if (file_exists($this->_csvFileName.$ext)) {
                         unlink($this->_csvFileName.$ext);
                     }
@@ -144,15 +138,12 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
     /**
      * Process should exit in case if there is no log file or the last page reached.
-     *
-     * If you want to kill this process in a system use the following command:
-     * export pid=`ps aux | grep kk_googlebase | awk 'NR==1{print $2}'`; kill -9 $pid
      */
-    protected function _runNextProcess($file, $log)
+    protected function _runNextProcess($file)
     {
-        $this->log("php $file >> $log &");
         if (!defined('KK_GOOGLEBASE_DEBUG')) {
-            shell_exec("php $file >> $log &");
+            $this->log("Starting new background process\n");
+            shell_exec("php $file >> /dev/null &");
         }
     }
 
@@ -163,9 +154,15 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         if (!file_exists($lastFileName)) {
             return 1;
         } else {
-            $lastProductId = file_get_contents($lastFileName);
-            if ($lastProductId) {
-                return $lastProductId;
+            $lastInfo = file_get_contents($lastFileName);
+            $this->_exportedCount = 0;
+            if ($lastInfo) {
+                $this->log("\n".$lastInfo);
+                $lastInfoArray = json_decode($lastInfo, true);
+                $this->_exportedCount = $lastInfoArray['exportedCount'];
+                $this->_totalCount = $lastInfoArray['totalCount'];
+                $this->log("Progress: ".round($this->_exportedCount/$this->_totalCount*100, 2)."%");
+                return $lastInfoArray['lastProductId'];
             } else {
                 throw new Exception('getLastProductId is empty');
             }
@@ -277,7 +274,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $this->_productCollection->addAttributeToFilter('sku', KK_GOOGLEBASE_DEBUG_SKU);
             }
 
-            $this->_productCollection->getSelect()->where('ps.value = 1')->distinct(true);
+            $this->_productCollection->getSelect()->where('ps.value = 1');
             Mage::getSingleton('cataloginventory/stock')->addInStockFilterToCollection($this->_productCollection);
         }
 
@@ -315,29 +312,37 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 }
             }
 
+            if (!file_exists($this->_csvFileName.".last")) {
+                $restart = true;
+            }
+
             $header = $this->_getExportAttributes($storeId);
             if ($restart) {
                 $this->_writeHeader($header);
             }
 
-            $lastProductId = $this->getLastProductId() + 1;
+            $lastProductId = $this->getLastProductId();
 
             $pageSize = Mage::getStoreConfig('kk_googlebase/general/queue');
 
-            $products = $this->getProductCollection()
-                ->setPageSize($pageSize)
-                ->setCurPage($lastProductId);
+            $products = $this->getProductCollection();
+            $products->getSelect()
+                ->limit($pageSize)
+                ->where('e.entity_id > ' . $lastProductId)
+                ->order('e.entity_id ASC')
+                ->group('e.entity_id');
 
-            $this->_foundCount = $products->count();
+            if (defined('KK_GOOGLEBASE_DEBUG')) {
+                $this->log("SQL:\n" . (string)$products->getSelect());
+            }
 
-            if (!$products) {
+            $products->load();
+            $this->_foundCount = sizeof($products);
+
+            if (!$this->_foundCount) {
                 $this->setState('finished');
                 return false;
             }
-
-            file_put_contents($this->_csvFileName.".last", $lastProductId);
-
-            $this->_exportedCount = 0;
 
             foreach ($products as $productData) {
                 $product = Mage::getModel("catalog/product");
@@ -381,7 +386,12 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     continue;
                 }
 
-                $this->_lastProductId = $productData['entity_id'];
+                $lastInfo = json_encode(array(
+                    "totalCount" => $this->_totalCount,
+                    "exportedCount" => $this->_exportedCount,
+                    "lastProductId" => $product->getId(),
+                ), JSON_PRETTY_PRINT);
+                file_put_contents($this->_csvFileName.".last", $lastInfo);
 
                 if (!$this->_isExportableProduct($product)) {
                     if (defined('KK_GOOGLEBASE_DEBUG')) {

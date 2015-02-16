@@ -26,32 +26,19 @@ class Kirchbergerknorr_Shell_GoogleBase extends Mage_Shell_Abstract
         Mage::getModel('kk_google_base/observer')->export(null, $restart);
     }
 
-    public function help()
-    {
-        $this->log('Kirchbergerknorr_GoogleBase Help:');
-
-        $help = <<< HELP
-
-    Start export:
-
-      php kk_googlebase.php
-
-HELP;
-
-        $this->log($help);
-    }
-
     public function run($params = false)
     {
         if (!$params || count($params) < 2) {
             $this->export(false);
             return false;
         } else {
-            define('KK_GOOGLEBASE_ECHO_LOGS', true);
-
-            if ($params[1] == 'restart') {
+            if ($params[1] == 'stop') {
+                $this->log("Killing process");
+                shell_exec("kill $(ps aux | grep kk_googlebase | grep -v 'grep' | awk '{print $2}')");
+            } if ($params[1] == 'restart') {
                 $this->export(true);
             } elseif ($params[1] == 'debug') {
+                define('KK_GOOGLEBASE_ECHO_LOGS', true);
                 define('KK_GOOGLEBASE_DEBUG', true);
                 if (isset($params[2])) {
                     define('KK_GOOGLEBASE_DEBUG_SKU', $params[2]);
@@ -61,7 +48,6 @@ HELP;
         }
     }
 }
-
 
 $shell = new Kirchbergerknorr_Shell_GoogleBase();
 

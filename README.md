@@ -38,11 +38,9 @@ Run those commands inside `shell` folder:
 | `php kk_googlebase`             | Start or continue export and initiate background process.                |
 | `php kk_googlebase restart`     | Restart export and initiate background process.                          |
 | `php kk_googlebase debug [sku]` | Run export for first 100 products (or given sku) with debug information. |
-
-Process should exit in case if there is no log file or the last page reached. 
-If you want to kill this process in a system use the following command:
+| `php kk_googlebase stop`        | Kill processes.                                                          |
  
-    export pid=`ps aux | grep kk_googlebase | awk 'NR==1{print $2}'`; kill -9 $pid
+Process should exit in case if the last page reached. 
 
 ## File Structure
 
@@ -72,10 +70,8 @@ See example in `examples/googlebase.csv`
 
  * `filename.csv` - Exported CSV
  * `filename.csv.processing` - Partly exported CSV (currently under process)
- * `filename.csv.run` - File shows that process is running. File content is amount of found products.
- * `filename.csv.thread` - Log file
- * `filename.csv.last`- Last exported ProductId
- * `filename.csv.locked`- Lock to block parallel processes. File content is datetime of start.
+ * `filename.csv.last`- Last exported ProductId and statistics in json format
+ * `filename.csv.locked`- Lock to block parallel processes. File content is datetime of start
 
 ## Support
 
