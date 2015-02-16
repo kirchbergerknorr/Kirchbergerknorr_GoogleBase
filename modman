@@ -1,0 +1,7 @@
+app/code/community/Kirchbergerknorr/GoogleBase/etc/config.xml app/code/community/Kirchbergerknorr/GoogleBase/etc/config.xml
+app/code/community/Kirchbergerknorr/GoogleBase/etc/system.xml app/code/community/Kirchbergerknorr/GoogleBase/etc/system.xml
+app/code/community/Kirchbergerknorr/GoogleBase/Model/Export/Abstract.php app/code/community/Kirchbergerknorr/GoogleBase/Model/Export/Abstract.php
+app/code/community/Kirchbergerknorr/GoogleBase/Model/Export/Csv.php app/code/community/Kirchbergerknorr/GoogleBase/Model/Export/Csv.php
+app/code/community/Kirchbergerknorr/GoogleBase/Model/Observer.php app/code/community/Kirchbergerknorr/GoogleBase/Model/Observer.php
+app/etc/modules/Kirchbergerknorr_GoogleBase.xml app/etc/modules/Kirchbergerknorr_GoogleBase.xml
+shell/kk_googlebase.php shell/kk_googlebase.php
