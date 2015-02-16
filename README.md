@@ -14,7 +14,7 @@ Add `require` and `repositories` sections to your composer.json as shown in exam
         
     "repositories": [
         {"type": "composer", "url": "http://packages.firegento.com"},
-        {"type": "git", "url": "https://github.com/kirchbergerknorr/Kirchbergerknorr_GoogleBase"},
+        {"type": "git", "url": "https://github.com/kirchbergerknorr/Kirchbergerknorr_GoogleBase"}
     ],
     
     "require": {
