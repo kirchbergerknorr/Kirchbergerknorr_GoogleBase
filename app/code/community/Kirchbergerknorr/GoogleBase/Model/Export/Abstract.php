@@ -161,7 +161,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $lastInfoArray = json_decode($lastInfo, true);
                 $this->_exportedCount = $lastInfoArray['exportedCount'];
                 $this->_totalCount = $lastInfoArray['totalCount'];
-                $this->log("Progress: ".round($this->_exportedCount/$this->_totalCount*100, 2)."%");
+                if ($this->_totalCount > 0) {
+                    $this->log("Progress: ".round($this->_exportedCount/$this->_totalCount*100, 2)."%");
+                }
                 return $lastInfoArray['lastProductId'];
             } else {
                 throw new Exception('getLastProductId is empty');
@@ -391,7 +393,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     "exportedCount" => $this->_exportedCount,
                     "lastProductId" => $product->getId(),
                 ), JSON_PRETTY_PRINT);
-                file_put_contents($this->_csvFileName.".last", $lastInfo);
 
                 if (!$this->_isExportableProduct($product)) {
                     if (defined('KK_GOOGLEBASE_DEBUG')) {
@@ -471,6 +472,10 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             unset($productAttributes);
             unset($productRelations);
             flush();
+
+            if (isset($lastInfo)) {
+                file_put_contents($this->_csvFileName.".last", $lastInfo);
+            }
 
             $this->unlock();
             $this->setState('continue');
