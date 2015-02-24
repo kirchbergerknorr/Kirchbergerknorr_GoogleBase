@@ -103,8 +103,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $this->_timeStarted = date('Y-m-d H:i:s');
                 $this->log("Export started for {$this->_totalCount}");
 
-                if (file_exists($this->_csvFileName)) {
-                    unlink($this->_csvFileName);
+                if (file_exists($this->_csvFileName.".last")) {
+                    unlink($this->_csvFileName.".last");
                 }
 
                 $this->log("Filename: {$this->_csvFileName}");
