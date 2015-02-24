@@ -34,6 +34,7 @@ class Kirchbergerknorr_Shell_GoogleBase extends Mage_Shell_Abstract
         } else {
             if ($params[1] == 'stop') {
                 $this->log("Killing process");
+                echo shell_exec('ps aux | grep kk_googlebase');
                 shell_exec("kill $(ps aux | grep kk_googlebase | grep -v 'grep' | awk '{print $2}')");
             } elseif ($params[1] == 'restart') {
                 $this->export(true);
