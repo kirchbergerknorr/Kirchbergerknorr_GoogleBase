@@ -131,6 +131,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 }
 
                 rename($this->_csvFileName.".processing", $this->_csvFileName);
+                $date = date("Y-m-d H:i:s\n");
+                file_put_contents($this->_csvFileName.".history", $date, FILE_APPEND);
 
                 $this->log("Export finished");
                 break;
@@ -142,18 +144,18 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
      */
     public function startNewThread($restart = false)
     {
-        $file = Mage::getBaseDir().'/shell/kk_googlebase.php';
-        $logfile = Mage::getBaseDir('log').DIRECTORY_SEPARATOR.Kirchbergerknorr_GoogleBase_Model_Observer::LOGFILE.'.thread.log';
+        $folder = Mage::getBaseDir().'/shell/';
+        $file = 'kk_googlebase.php';
 
         if (!defined('KK_GOOGLEBASE_DEBUG')) {
             $restartParam = '';
             if ($restart) {
                 $restartParam = 'restart';
             }
-            $cmd = "php $file $restartParam >> $logfile &";
+            $cmd = "cd $folder && nohup php -q $file $restartParam > /dev/null &";
             $this->log("Starting new background process");
             $this->log($cmd);
-            shell_exec($cmd);
+            exec($cmd, $op, $er);
         }
     }
 
