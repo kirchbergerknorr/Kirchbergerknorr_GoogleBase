@@ -37,6 +37,8 @@ class Kirchbergerknorr_Shell_GoogleBase extends Mage_Shell_Abstract
                 shell_exec("kill $(ps aux | grep kk_googlebase | grep -v 'grep' | awk '{print $2}')");
             } elseif ($params[1] == 'restart') {
                 $this->export(true);
+            } elseif ($params[1] == 'cron') {
+                Mage::getModel('kk_google_base/observer')->restart();
             } elseif ($params[1] == 'test') {
                 $csvFileName = Mage::getStoreConfig('kk_googlebase/general/export_path');
 

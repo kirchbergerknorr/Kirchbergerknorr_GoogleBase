@@ -42,7 +42,7 @@
                     <config_path>kk_googlebase/general/cron</config_path>
                 </schedule>
                 <run>
-                    <model>kk_google_base/observer::export</model>
+                    <model>kk_google_base/observer::restart</model>
                 </run>
             </kk_google_base_job>
         </jobs>

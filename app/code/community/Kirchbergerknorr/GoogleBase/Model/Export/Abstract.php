@@ -21,6 +21,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected $_exportedCount;
     protected $_foundCount;
     protected $_totalCount;
+    protected $_timeStarted;
     protected $_deliveryBlock;
     protected $_exportAttributeCodes = null;
     protected $_categoryNames = null;
@@ -99,6 +100,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         {
             case('started'):
                 $this->_totalCount = $this->getProductCollection()->getSize();
+                $this->_timeStarted = date('Y-m-d H:i:s');
                 $this->log("Export started for {$this->_totalCount}");
 
                 if (file_exists($this->_csvFileName)) {
@@ -113,8 +115,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             case('continue'):
 
                 if (file_exists($this->_csvFileName.".processing")) {
-                    $file = Mage::getBaseDir().'/shell/kk_googlebase.php';
-                    $this->_runNextProcess($file);
+                    $this->startNewThread(false);
                 } else {
                     $this->log("Continue skipped");
                 }
@@ -139,11 +140,20 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     /**
      * Process should exit in case if there is no log file or the last page reached.
      */
-    protected function _runNextProcess($file)
+    public function startNewThread($restart = false)
     {
+        $file = Mage::getBaseDir().'/shell/kk_googlebase.php';
+        $logfile = Mage::getBaseDir('log').DIRECTORY_SEPARATOR.Kirchbergerknorr_GoogleBase_Model_Observer::LOGFILE.'.thread.log';
+
         if (!defined('KK_GOOGLEBASE_DEBUG')) {
-            $this->log("Starting new background process\n");
-            shell_exec("php $file >> /dev/null &");
+            $restartParam = '';
+            if ($restart) {
+                $restartParam = 'restart';
+            }
+            $cmd = "php $file $restartParam >> $logfile &";
+            $this->log("Starting new background process");
+            $this->log($cmd);
+            shell_exec($cmd);
         }
     }
 
@@ -157,12 +167,25 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             $lastInfo = file_get_contents($lastFileName);
             $this->_exportedCount = 0;
             if ($lastInfo) {
-                $this->log("\n".$lastInfo);
                 $lastInfoArray = json_decode($lastInfo, true);
                 $this->_exportedCount = $lastInfoArray['exportedCount'];
                 $this->_totalCount = $lastInfoArray['totalCount'];
+                $this->_timeStarted = $lastInfoArray['timeStarted'];
+
+                $this->log("Started: ".$this->_timeStarted);
+                $this->log("Total Count: ".$this->_totalCount);
+                $this->log("Exported Count: ".$this->_exportedCount);
+
                 if ($this->_totalCount > 0) {
+                    $started = strtotime($this->_timeStarted);
+                    $now = time();
+                    $diff = $now - $started;
+                    $one = $diff/$this->_exportedCount;
+                    $estimate = $one * $this->_totalCount;
+                    $this->log("Duration: ".gmdate("H:i:s", $diff));
+                    $this->log("Estimate: ".gmdate("H:i:s", $estimate));
                     $this->log("Progress: ".round($this->_exportedCount/$this->_totalCount*100, 2)."%");
+                    $this->log("---");
                 }
                 return $lastInfoArray['lastProductId'];
             } else {
@@ -296,7 +319,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             $this->_storeId = $storeId;
         }
 
-        $this->log('Started export for store_id: '.$storeId);
+        if ($restart) {
+            $this->log('Restarted export for store_id: '.$storeId);
+        }
 
         if (!$restart && $this->isLocked())
         {
@@ -307,15 +332,19 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         try {
             $this->lockAndBlock();
 
+            if (!file_exists($this->_csvFileName.".last")) {
+                $this->log('Restarted, while file does not exist: '.$this->_csvFileName.".last");
+                $restart = true;
+            }
+
             if ($restart) {
-                $this->setState('started');
                 if (file_exists($this->_csvFileName.".last")) {
                     unlink($this->_csvFileName.".last");
                 }
             }
 
-            if (!file_exists($this->_csvFileName.".last")) {
-                $restart = true;
+            if ($restart) {
+                $this->setState('started');
             }
 
             $header = $this->_getExportAttributes($storeId);
@@ -390,6 +419,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                 $lastInfo = json_encode(array(
                     "totalCount" => $this->_totalCount,
+                    "timeStarted" => $this->_timeStarted,
                     "exportedCount" => $this->_exportedCount,
                     "lastProductId" => $product->getId(),
                 ), JSON_PRETTY_PRINT);
@@ -466,16 +496,16 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 }
 
                 $this->_writeItem($productIndex);
+
+                if (isset($lastInfo)) {
+                    file_put_contents($this->_csvFileName.".last", $lastInfo);
+                }
             }
 
             unset($products);
             unset($productAttributes);
             unset($productRelations);
             flush();
-
-            if (isset($lastInfo)) {
-                file_put_contents($this->_csvFileName.".last", $lastInfo);
-            }
 
             $this->unlock();
             $this->setState('continue');
