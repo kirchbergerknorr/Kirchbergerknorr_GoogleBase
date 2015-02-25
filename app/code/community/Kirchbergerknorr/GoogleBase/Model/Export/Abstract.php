@@ -484,14 +484,18 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $parentSpecialPrice = $parentProduct->getFinalPrice();
 
                     $pricesByAttributeValues = array();
-                    foreach ($attributes as $attribute) {
-                        $prices = $attribute->getPrices();
-                        foreach ($prices as $price){
-                            if ($price['is_percent']){ //if the price is specified in percents
-                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
-                            }
-                            else { //if the price is absolute value
-                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                    if (count($attributes)) {
+                        foreach ($attributes as $attribute) {
+                            $prices = $attribute->getPrices();
+                            if (count($prices)) {
+                                foreach ($prices as $price){
+                                    if ($price['is_percent']){ //if the price is specified in percents
+                                        $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
+                                    }
+                                    else { //if the price is absolute value
+                                        $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                                    }
+                                }
                             }
                         }
                     }
