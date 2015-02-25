@@ -67,6 +67,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     protected function _getExportAttributes($storeId = null)
     {
         if($this->_exportAttributeCodes === null){
+            // todo: move it to configuration
             $headerDefault = array(
                 'sku',
                 'name',
@@ -435,6 +436,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                 $this->_exportedCount += 1;
 
+
+                // todo: move it to product model
                 $productIndex = array(
                     'id' => $product->getId(),
                     'type' => $product->getTypeId(),
@@ -478,6 +481,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['parent_id'] = $parentProduct->getId();
                     $productIndex['parent_status'] = $parentProduct->getStatus();
 
+// todo: switch to get price from parent product
 //                    $productIndex['price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getPrice());
 //                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getFinalPrice());
 
