@@ -462,20 +462,24 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $productIndex['image_small'] = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
                 $productIndex['image_big'] = (string) $this->_imageHelper->init($product, 'image')->resize('300');
 
-                if ($productIndex['size'] && $productIndex['size'][0] == '-') {
-                    $productIndex['size'] = '';
-                }
-
                 if ($productIndex['color'] && $productIndex['color'][0] == '-') {
                     $productIndex['color'] = '';
+                } else {
+                    $productIndex['name'] .= ' - '.$productIndex['color'];
+                }
+
+                if ($productIndex['size'] && $productIndex['size'][0] == '-') {
+                    $productIndex['size'] = '';
+                } else {
+                    $productIndex['name'] .= ' - '.$productIndex['size'];
                 }
 
                 if ($parentProduct) {
                     $productIndex['parent_id'] = $parentProduct->getId();
                     $productIndex['parent_status'] = $parentProduct->getStatus();
 
-                    $productIndex['price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getPrice());
-                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getFinalPrice());
+//                    $productIndex['price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getPrice());
+//                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getFinalPrice());
 
                     $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
@@ -486,6 +490,10 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     if (!$productIndex['category']) {
                         $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
                         $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
+                    }
+
+                    if (!$productIndex['manufacturer']) {
+                        $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
                     }
 
                     if (strlen($productIndex['short_description']) < 2) {
