@@ -43,7 +43,9 @@ class Kirchbergerknorr_GoogleBase_Model_Export_Csv extends Kirchbergerknorr_Goog
         }
 
         $row = '"'.implode('";"', $orderedArray).'"'."\n";
-        file_put_contents($this->_csvFileName.".processing", $row, FILE_APPEND);
+        if (!defined('KK_GOOGLEBASE_DEBUG')) {
+            file_put_contents($this->_csvFileName . ".processing", $row, FILE_APPEND);
+        }
     }
 
     protected function _writeHeader($data)

@@ -453,8 +453,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     'ean' => $product->getIntersysEan(),
                     'size' => $product->getAttributeText('intersys_size'),
                     'color' => $product->getAttributeText('intersys_color'),
-                    'price' => Mage::helper('tax')->getPrice($product, $product->getPrice()),
-                    'special_price' => Mage::helper('tax')->getPrice($product, $product->getFinalPrice()),
                     'deeplink' => $product->getProductUrl(),
                     'delivery_time' => $this->_getDelivery($product),
                     'shipping_costs_de' => $this->_getShippingCosts($product, 'DE'),
@@ -477,13 +475,48 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['name'] .= ' - '.$productIndex['size'];
                 }
 
+                $productIndex['price'] = Mage::helper('tax')->getPrice($product, $product->getPrice());
+                $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
+
                 if ($parentProduct) {
+                    $attributes = $parentProduct->getTypeInstance(true)->getConfigurableAttributes($parentProduct);
+                    $parentPrice = $parentProduct->getPrice();
+                    $parentSpecialPrice = $parentProduct->getFinalPrice();
+
+                    $pricesByAttributeValues = array();
+                    foreach ($attributes as $attribute) {
+                        $prices = $attribute->getPrices();
+                        foreach ($prices as $price){
+                            if ($price['is_percent']){ //if the price is specified in percents
+                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
+                            }
+                            else { //if the price is absolute value
+                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                            }
+                        }
+                    }
+
+                    $simple = $parentProduct->getTypeInstance()->getUsedProducts();
+
+                    foreach ($simple as $sProduct){
+                        if ($sProduct->getId() == $productIndex['id']) {
+
+                            foreach ($attributes as $attribute) {
+                                $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
+                                if (isset($pricesByAttributeValues[$value])){
+                                    $parentPrice += $pricesByAttributeValues[$value];
+                                    $parentSpecialPrice += $pricesByAttributeValues[$value];
+                                }
+                            }
+
+                        }
+                    }
+
+                    $productIndex['price'] = $parentPrice;
+                    $productIndex['special_price'] = $parentSpecialPrice;
+
                     $productIndex['parent_id'] = $parentProduct->getId();
                     $productIndex['parent_status'] = $parentProduct->getStatus();
-
-// todo: switch to get price from parent product
-//                    $productIndex['price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getPrice());
-//                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($parentProduct, $parentProduct->getFinalPrice());
 
                     $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
