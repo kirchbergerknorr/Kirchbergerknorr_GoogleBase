@@ -109,7 +109,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     unlink($this->_csvFileName.".last");
                 }
 
-                $this->log("Filename: {$this->_csvFileName}");
+                $this->log("Filename: {$this->_csvFileName}.processing");
 
                 file_put_contents($this->_csvFileName.".processing", '');
                 break;
@@ -126,13 +126,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             case('finished'):
 
                 // Remove all service files
-                foreach (array('.locked', '.last') as $ext) {
-                    if (file_exists($this->_csvFileName.$ext)) {
-                        unlink($this->_csvFileName.$ext);
-                    }
+                if (file_exists($this->_csvFileName.'.last')) {
+                    unlink($this->_csvFileName.'.last');
                 }
 
+                $this->log("Renaming ".$this->_csvFileName.".processing to ".$this->_csvFileName);
                 rename($this->_csvFileName.".processing", $this->_csvFileName);
+
                 $date = date("Y-m-d H:i:s\n");
                 file_put_contents($this->_csvFileName.".history", $date, FILE_APPEND);
 
@@ -410,185 +410,184 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             $products->load();
             $this->_foundCount = sizeof($products);
 
-            if (!$this->_foundCount) {
-                $this->setState('finished');
-                return false;
-            }
+            $this->log("Found: ".$this->_foundCount);
 
-            foreach ($products as $productData) {
-                $product = Mage::getModel("catalog/product");
-                $product->setStoreId($storeId);
-                $product->load($productData['entity_id']);
+            $exportedInIteration = 0;
+            if ($this->_foundCount) {
+                foreach ($products as $productData) {
+                    $product = Mage::getModel("catalog/product");
+                    $product->setStoreId($storeId);
+                    $product->load($productData['entity_id']);
 
-                $parentProduct = null;
-                if ($productData['parent_id']) {
-                    $parentProduct = Mage::getModel('catalog/product');
-                    $parentProduct->setStoreId($storeId);
-                    $parentProduct->load($productData['parent_id']);
-                }
-
-                if ($product->getTypeID() != 'simple') {
-                    if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        $this->log($productData['sku']. ' skipped as not simple');
+                    $parentProduct = null;
+                    if ($productData['parent_id']) {
+                        $parentProduct = Mage::getModel('catalog/product');
+                        $parentProduct->setStoreId($storeId);
+                        $parentProduct->load($productData['parent_id']);
                     }
-                    continue;
-                }
 
-                if ($product->getStatus() != 1 || ($parentProduct && $parentProduct->getStatus() != 1)) {
-                    if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        if ($product->getStatus() != 1) {
-                            $this->log($productData['sku'].' skipped as disabled');
-                        } else {
-                            if ($parentProduct) {
-                                $this->log('configurable: '.$productData['parent_id']);
-                                $this->log($productData['sku'].' skipped as no configurable');
+                    if ($product->getTypeID() != 'simple') {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            $this->log($productData['sku'] . ' skipped as not simple');
+                        }
+                        continue;
+                    }
+
+                    if ($product->getStatus() != 1 || ($parentProduct && $parentProduct->getStatus() != 1)) {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            if ($product->getStatus() != 1) {
+                                $this->log($productData['sku'] . ' skipped as disabled');
                             } else {
-                                $this->log($productData['sku'].' skipped as configurable disabled');
-                            }
-                        }
-                    }
-                    continue;
-                }
-
-                if (!$parentProduct && $product->getVisibility() !== 4) {
-                    if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        $this->log($productData['sku'].' skipped as invisible');
-                    }
-                    continue;
-                }
-
-                $lastInfo = json_encode(array(
-                    "totalCount" => $this->_totalCount,
-                    "timeStarted" => $this->_timeStarted,
-                    "exportedCount" => $this->_exportedCount,
-                    "lastProductId" => $product->getId(),
-                ), JSON_PRETTY_PRINT);
-
-                if (!$this->_isExportableProduct($product)) {
-                    if (defined('KK_GOOGLEBASE_DEBUG')) {
-                        $this->log($productData['sku'].' skipped as not exportable');
-                    }
-                    continue;
-                }
-
-                $this->_exportedCount += 1;
-
-
-                // todo: move it to product model
-                $productIndex = array(
-                    'id' => $product->getId(),
-                    'type' => $product->getTypeId(),
-                    'visibility' => $product->getVisibility(),
-                    'status' => $product->getStatus(),
-                    'sku' => $productData['sku'],
-                    'name' => $product->getName(),
-                    'short_description' => $product->getShortDescription(),
-                    'description' => $product->getDescription(),
-                    'category' => $this->_getCategoryPath($productData['entity_id'], $storeId),
-                    'category_url' => $this->_getCategoriesUrls($product, $storeId),
-                    'manufacturer' => $product->getAttributeText('manufacturer'),
-                    'ean' => $product->getIntersysEan(),
-                    'size' => $product->getAttributeText('intersys_size'),
-                    'color' => $product->getAttributeText('intersys_color'),
-                    'deeplink' => $product->getProductUrl(),
-                    'delivery_time' => $this->_getDelivery($product),
-                    'shipping_costs_de' => $this->_getShippingCosts($product, 'DE'),
-                    'shipping_costs_at' => $this->_getShippingCosts($product, 'AT'),
-                    'shipping_costs_ch' => $this->_getShippingCosts($product, 'CH'),
-                );
-
-                $productIndex['image_small'] = (string) $this->_imageHelper->init($product, 'small_image')->resize('150');
-                $productIndex['image_big'] = (string) $this->_imageHelper->init($product, 'image')->resize('300');
-
-                if ($productIndex['color'] && $productIndex['color'][0] == '-') {
-                    $productIndex['color'] = '';
-                } else {
-                    $productIndex['name'] .= ' - '.$productIndex['color'];
-                }
-
-                if ($productIndex['size'] && $productIndex['size'][0] == '-') {
-                    $productIndex['size'] = '';
-                } else {
-                    $productIndex['name'] .= ' - '.$productIndex['size'];
-                }
-
-                $productIndex['price'] = Mage::helper('tax')->getPrice($product, $product->getPrice());
-                $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
-
-                if ($parentProduct) {
-                    if (method_exists($parentProduct->getTypeInstance(true), 'getConfigurableAttributes')) {
-                        $attributes = $parentProduct->getTypeInstance(true)->getConfigurableAttributes($parentProduct);
-                        $parentPrice = $parentProduct->getPrice();
-                        $parentSpecialPrice = $parentProduct->getFinalPrice();
-
-                        $pricesByAttributeValues = array();
-                        if (count($attributes)) {
-                            foreach ($attributes as $attribute) {
-                                $prices = $attribute->getPrices();
-                                if (count($prices)) {
-                                    foreach ($prices as $price){
-                                        if ($price['is_percent']){ //if the price is specified in percents
-                                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
-                                        }
-                                        else { //if the price is absolute value
-                                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
-                                        }
-                                    }
+                                if ($parentProduct) {
+                                    $this->log('configurable: ' . $productData['parent_id']);
+                                    $this->log($productData['sku'] . ' skipped as no configurable');
+                                } else {
+                                    $this->log($productData['sku'] . ' skipped as configurable disabled');
                                 }
                             }
                         }
+                        continue;
+                    }
 
-                        $simple = $parentProduct->getTypeInstance()->getUsedProducts();
+                    if (!$parentProduct && $product->getVisibility() !== 4) {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            $this->log($productData['sku'] . ' skipped as invisible');
+                        }
+                        continue;
+                    }
 
-                        foreach ($simple as $sProduct){
-                            if ($sProduct->getId() == $productIndex['id']) {
+                    $lastInfo = json_encode(array(
+                        "totalCount" => $this->_totalCount,
+                        "timeStarted" => $this->_timeStarted,
+                        "exportedCount" => $this->_exportedCount,
+                        "lastProductId" => $product->getId(),
+                    ), JSON_PRETTY_PRINT);
 
+                    if (!$this->_isExportableProduct($product)) {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            $this->log($productData['sku'] . ' skipped as not exportable');
+                        }
+                        continue;
+                    }
+
+                    $this->_exportedCount++;
+                    $exportedInIteration++;
+
+                    // todo: move it to product model
+                    $productIndex = array(
+                        'id' => $product->getId(),
+                        'type' => $product->getTypeId(),
+                        'visibility' => $product->getVisibility(),
+                        'status' => $product->getStatus(),
+                        'sku' => $productData['sku'],
+                        'name' => $product->getName(),
+                        'short_description' => $product->getShortDescription(),
+                        'description' => $product->getDescription(),
+                        'category' => $this->_getCategoryPath($productData['entity_id'], $storeId),
+                        'category_url' => $this->_getCategoriesUrls($product, $storeId),
+                        'manufacturer' => $product->getAttributeText('manufacturer'),
+                        'ean' => $product->getIntersysEan(),
+                        'size' => $product->getAttributeText('intersys_size'),
+                        'color' => $product->getAttributeText('intersys_color'),
+                        'deeplink' => $product->getProductUrl(),
+                        'delivery_time' => $this->_getDelivery($product),
+                        'shipping_costs_de' => $this->_getShippingCosts($product, 'DE'),
+                        'shipping_costs_at' => $this->_getShippingCosts($product, 'AT'),
+                        'shipping_costs_ch' => $this->_getShippingCosts($product, 'CH'),
+                    );
+
+                    $productIndex['image_small'] = (string)$this->_imageHelper->init($product, 'small_image')->resize('150');
+                    $productIndex['image_big'] = (string)$this->_imageHelper->init($product, 'image')->resize('300');
+
+                    if ($productIndex['color'] && $productIndex['color'][0] == '-') {
+                        $productIndex['color'] = '';
+                    } else {
+                        $productIndex['name'] .= ' - ' . $productIndex['color'];
+                    }
+
+                    if ($productIndex['size'] && $productIndex['size'][0] == '-') {
+                        $productIndex['size'] = '';
+                    } else {
+                        $productIndex['name'] .= ' - ' . $productIndex['size'];
+                    }
+
+                    $productIndex['price'] = Mage::helper('tax')->getPrice($product, $product->getPrice());
+                    $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
+
+                    if ($parentProduct) {
+                        if (method_exists($parentProduct->getTypeInstance(true), 'getConfigurableAttributes')) {
+                            $attributes = $parentProduct->getTypeInstance(true)->getConfigurableAttributes($parentProduct);
+                            $parentPrice = $parentProduct->getPrice();
+                            $parentSpecialPrice = $parentProduct->getFinalPrice();
+
+                            $pricesByAttributeValues = array();
+                            if (count($attributes)) {
                                 foreach ($attributes as $attribute) {
-                                    $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
-                                    if (isset($pricesByAttributeValues[$value])){
-                                        $parentPrice += $pricesByAttributeValues[$value];
-                                        $parentSpecialPrice += $pricesByAttributeValues[$value];
+                                    $prices = $attribute->getPrices();
+                                    if (count($prices)) {
+                                        foreach ($prices as $price) {
+                                            if ($price['is_percent']) { //if the price is specified in percents
+                                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
+                                            } else { //if the price is absolute value
+                                                $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                                            }
+                                        }
                                     }
                                 }
+                            }
 
+                            $simple = $parentProduct->getTypeInstance()->getUsedProducts();
+
+                            foreach ($simple as $sProduct) {
+                                if ($sProduct->getId() == $productIndex['id']) {
+
+                                    foreach ($attributes as $attribute) {
+                                        $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
+                                        if (isset($pricesByAttributeValues[$value])) {
+                                            $parentPrice += $pricesByAttributeValues[$value];
+                                            $parentSpecialPrice += $pricesByAttributeValues[$value];
+                                        }
+                                    }
+
+                                }
+                            }
+
+                            $productIndex['price'] = $parentPrice;
+                            $productIndex['special_price'] = $parentSpecialPrice;
+
+                            $productIndex['parent_id'] = $parentProduct->getId();
+                            $productIndex['parent_status'] = $parentProduct->getStatus();
+
+                            $productIndex['deeplink'] = $parentProduct->getProductUrl();
+
+                            // todo: check if simple product picture is not a placeholder
+                            $productIndex['image_small'] = (string)$this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
+                            $productIndex['image_big'] = (string)$this->_imageHelper->init($parentProduct, 'image')->resize('300');
+
+                            if (!$productIndex['category']) {
+                                $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
+                                $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
+                            }
+
+                            if (!$productIndex['manufacturer']) {
+                                $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
+                            }
+
+                            if (strlen($productIndex['short_description']) < 2) {
+                                $productIndex['short_description'] = $parentProduct->getShortDescription();
+                            }
+
+                            if (strlen($productIndex['description']) < 2) {
+                                $productIndex['description'] = $parentProduct->getDescription();
                             }
                         }
-
-                        $productIndex['price'] = $parentPrice;
-                        $productIndex['special_price'] = $parentSpecialPrice;
-
-                        $productIndex['parent_id'] = $parentProduct->getId();
-                        $productIndex['parent_status'] = $parentProduct->getStatus();
-
-                        $productIndex['deeplink'] = $parentProduct->getProductUrl();
-
-                        // todo: check if simple product picture is not a placeholder
-                        $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
-                        $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
-
-                        if (!$productIndex['category']) {
-                            $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
-                            $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
-                        }
-
-                        if (!$productIndex['manufacturer']) {
-                            $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
-                        }
-
-                        if (strlen($productIndex['short_description']) < 2) {
-                            $productIndex['short_description'] = $parentProduct->getShortDescription();
-                        }
-
-                        if (strlen($productIndex['description']) < 2) {
-                            $productIndex['description'] = $parentProduct->getDescription();
-                        }
                     }
-                }
 
-                $this->_writeItem($productIndex);
+                    $this->_writeItem($productIndex);
 
-                if (isset($lastInfo)) {
-                    file_put_contents($this->_csvFileName.".last", $lastInfo);
+                    if (isset($lastInfo)) {
+                        file_put_contents($this->_csvFileName . ".last", $lastInfo);
+                    }
                 }
             }
 
@@ -596,6 +595,14 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             unset($productAttributes);
             unset($productRelations);
             flush();
+
+            $this->log("Exported: ".$exportedInIteration);
+
+            if ($this->_foundCount < 10 && $exportedInIteration == 0) {
+                $this->setState('finished');
+                $this->unlock();
+                return false;
+            }
 
             $this->unlock();
             $this->setState('continue');
