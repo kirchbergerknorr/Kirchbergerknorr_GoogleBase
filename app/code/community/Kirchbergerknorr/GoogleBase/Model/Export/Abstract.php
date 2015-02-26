@@ -100,6 +100,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         switch ($state)
         {
             case('started'):
+                $this->log("\n\n\n\n\n");
                 $this->_totalCount = $this->getProductCollection()->getSize();
                 $this->_timeStarted = date('Y-m-d H:i:s');
                 $this->log("Export started for {$this->_totalCount}");
@@ -153,10 +154,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             if ($restart) {
                 $restartParam = 'restart';
             }
-            $cmd = "cd $folder && nohup php -q $file $restartParam > /dev/null &";
+            $cmd = "cd $folder && php $file $restartParam";
+            $outputFile =  Mage::getBaseDir('log').'/'.Kirchbergerknorr_GoogleBase_Model_Observer::LOGFILE.'.log';
+            $pidFile = $this->_csvFileName.".pid";
+
             $this->log("Starting new background process");
             $this->log($cmd);
-            exec($cmd, $op, $er);
+            exec(sprintf("%s >> %s 2>>%s & echo $! >> %s &", $cmd, $outputFile, $outputFile, $pidFile));
         }
     }
 
@@ -201,7 +205,27 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     {
         $isLocked = file_exists($this->_csvFileName.".locked");
         if ($isLocked) {
-            $this->log("Locked: ".$this->_csvFileName.".locked");
+            $this->log("Lock file - ".$this->_csvFileName.".locked");
+
+            if (file_exists($this->_csvFileName.".pid")) {
+                $pid = file_get_contents($this->_csvFileName.".pid");
+                $this->log("Pid file - ".$this->_csvFileName.".pid");
+
+                try {
+                    $result = shell_exec(sprintf("ps %d", $pid));
+                    if (count(preg_split("/\n/", $result)) > 2) {
+                        $this->log("Proccess is running - ".$pid);
+                        $isLocked = true;
+                    } else {
+                        $this->log("Proccess is not running");
+                        $isLocked = false;
+                    }
+                } catch (Exception $e) {
+                    $this->logException($e);
+                }
+            } else {
+                $isLocked = false;
+            }
         }
 
         return $isLocked;
@@ -216,6 +240,10 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
     {
         if (file_exists($this->_csvFileName.".locked")) {
             unlink($this->_csvFileName.".locked");
+        }
+
+        if (file_exists($this->_csvFileName.".pid")) {
+            unlink($this->_csvFileName.".pid");
         }
     }
 
@@ -479,70 +507,72 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
 
                 if ($parentProduct) {
-                    $attributes = $parentProduct->getTypeInstance(true)->getConfigurableAttributes($parentProduct);
-                    $parentPrice = $parentProduct->getPrice();
-                    $parentSpecialPrice = $parentProduct->getFinalPrice();
+                    if (method_exists($parentProduct->getTypeInstance(true), 'getConfigurableAttributes')) {
+                        $attributes = $parentProduct->getTypeInstance(true)->getConfigurableAttributes($parentProduct);
+                        $parentPrice = $parentProduct->getPrice();
+                        $parentSpecialPrice = $parentProduct->getFinalPrice();
 
-                    $pricesByAttributeValues = array();
-                    if (count($attributes)) {
-                        foreach ($attributes as $attribute) {
-                            $prices = $attribute->getPrices();
-                            if (count($prices)) {
-                                foreach ($prices as $price){
-                                    if ($price['is_percent']){ //if the price is specified in percents
-                                        $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
-                                    }
-                                    else { //if the price is absolute value
-                                        $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    $simple = $parentProduct->getTypeInstance()->getUsedProducts();
-
-                    foreach ($simple as $sProduct){
-                        if ($sProduct->getId() == $productIndex['id']) {
-
+                        $pricesByAttributeValues = array();
+                        if (count($attributes)) {
                             foreach ($attributes as $attribute) {
-                                $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
-                                if (isset($pricesByAttributeValues[$value])){
-                                    $parentPrice += $pricesByAttributeValues[$value];
-                                    $parentSpecialPrice += $pricesByAttributeValues[$value];
+                                $prices = $attribute->getPrices();
+                                if (count($prices)) {
+                                    foreach ($prices as $price){
+                                        if ($price['is_percent']){ //if the price is specified in percents
+                                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'] * $parentSpecialPrice / 100;
+                                        }
+                                        else { //if the price is absolute value
+                                            $pricesByAttributeValues[$price['value_index']] = (float)$price['pricing_value'];
+                                        }
+                                    }
                                 }
                             }
-
                         }
-                    }
 
-                    $productIndex['price'] = $parentPrice;
-                    $productIndex['special_price'] = $parentSpecialPrice;
+                        $simple = $parentProduct->getTypeInstance()->getUsedProducts();
 
-                    $productIndex['parent_id'] = $parentProduct->getId();
-                    $productIndex['parent_status'] = $parentProduct->getStatus();
+                        foreach ($simple as $sProduct){
+                            if ($sProduct->getId() == $productIndex['id']) {
 
-                    $productIndex['deeplink'] = $parentProduct->getProductUrl();
+                                foreach ($attributes as $attribute) {
+                                    $value = $sProduct->getData($attribute->getProductAttribute()->getAttributeCode());
+                                    if (isset($pricesByAttributeValues[$value])){
+                                        $parentPrice += $pricesByAttributeValues[$value];
+                                        $parentSpecialPrice += $pricesByAttributeValues[$value];
+                                    }
+                                }
 
-                    // todo: check if simple product picture is not a placeholder
-                    $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
-                    $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
+                            }
+                        }
 
-                    if (!$productIndex['category']) {
-                        $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
-                        $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
-                    }
+                        $productIndex['price'] = $parentPrice;
+                        $productIndex['special_price'] = $parentSpecialPrice;
 
-                    if (!$productIndex['manufacturer']) {
-                        $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
-                    }
+                        $productIndex['parent_id'] = $parentProduct->getId();
+                        $productIndex['parent_status'] = $parentProduct->getStatus();
 
-                    if (strlen($productIndex['short_description']) < 2) {
-                        $productIndex['short_description'] = $parentProduct->getShortDescription();
-                    }
+                        $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
-                    if (strlen($productIndex['description']) < 2) {
-                        $productIndex['description'] = $parentProduct->getDescription();
+                        // todo: check if simple product picture is not a placeholder
+                        $productIndex['image_small'] = (string) $this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
+                        $productIndex['image_big'] = (string) $this->_imageHelper->init($parentProduct, 'image')->resize('300');
+
+                        if (!$productIndex['category']) {
+                            $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
+                            $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
+                        }
+
+                        if (!$productIndex['manufacturer']) {
+                            $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
+                        }
+
+                        if (strlen($productIndex['short_description']) < 2) {
+                            $productIndex['short_description'] = $parentProduct->getShortDescription();
+                        }
+
+                        if (strlen($productIndex['description']) < 2) {
+                            $productIndex['description'] = $parentProduct->getDescription();
+                        }
                     }
                 }
 

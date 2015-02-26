@@ -57,6 +57,12 @@ class Kirchbergerknorr_GoogleBase_Model_Observer
         $csv->startNewThread(true);
     }
 
+    public function next($observer = null)
+    {
+        $csv = Mage::getModel('kk_google_base/export_csv');
+        $csv->startNewThread();
+    }
+
     public function export($observer = null, $restart = false)
     {
          if (!Mage::getStoreConfig('kk_googlebase/general/enabled')) {
