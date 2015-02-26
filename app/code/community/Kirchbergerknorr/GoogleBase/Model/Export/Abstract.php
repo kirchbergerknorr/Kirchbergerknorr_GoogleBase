@@ -200,11 +200,12 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                 if ($this->_totalCount > 0) {
                     $started = strtotime($this->_timeStarted);
                     $now = time();
-                    $diff = $now - $started;
-                    $one = $diff/$this->_exportedCount;
+                    $duration = $now - $started;
+                    $one = $duration/$this->_exportedCount;
                     $estimate = $one * $this->_totalCount;
-                    $this->log("Duration: ".gmdate("H:i:s", $diff));
+                    $this->log("Duration: ".gmdate("H:i:s", $duration));
                     $this->log("Estimate: ".gmdate("H:i:s", $estimate));
+                    $this->log("Finish in: ".gmdate("H:i:s", $estimate-$duration));
                     $this->log("Progress: ".round($this->_exportedCount/$this->_totalCount*100, 2)."%");
                     $this->log("---");
                 }
