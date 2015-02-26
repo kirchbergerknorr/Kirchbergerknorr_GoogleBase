@@ -100,9 +100,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         switch ($state)
         {
             case('started'):
-                $this->log("\n\n\n\n\n");
                 $this->_totalCount = $this->getProductCollection()->getSize();
                 $this->_timeStarted = date('Y-m-d H:i:s');
+
                 $this->log("Export started for {$this->_totalCount}");
 
                 if (file_exists($this->_csvFileName.".last")) {
@@ -152,8 +152,19 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
         if (!defined('KK_GOOGLEBASE_DEBUG')) {
             $restartParam = '';
             if ($restart) {
+                $this->log("\n\n\n\n\n");
                 $restartParam = 'restart';
+
+                if (file_exists($this->_csvFileName.".pid")) {
+                    $pid = file_get_contents($this->_csvFileName . ".pid");
+                    if ($pid) {
+                        $this->log("Killing previous process pid: ".$pid);
+                        exec("kill -9 ".$pid);
+                        unlink($this->_csvFileName.".pid");
+                    }
+                }
             }
+
             $cmd = "cd $folder && php $file $restartParam";
             $outputFile =  Mage::getBaseDir('log').'/'.Kirchbergerknorr_GoogleBase_Model_Observer::LOGFILE.'.log';
             $pidFile = $this->_csvFileName.".pid";
@@ -161,6 +172,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             $this->log("Starting new background process");
             $this->log($cmd);
             exec(sprintf("%s >> %s 2>>%s & echo $! >> %s &", $cmd, $outputFile, $outputFile, $pidFile));
+
+            $pid = file_get_contents($this->_csvFileName . ".pid");
+            $this->log("pid: ".$pid);
         }
     }
 
@@ -366,12 +380,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
             if (!file_exists($this->_csvFileName.".last")) {
                 $this->log('Restarted, while file does not exist: '.$this->_csvFileName.".last");
                 $restart = true;
-            }
-
-            if ($restart) {
-                if (file_exists($this->_csvFileName.".last")) {
-                    unlink($this->_csvFileName.".last");
-                }
             }
 
             if ($restart) {
