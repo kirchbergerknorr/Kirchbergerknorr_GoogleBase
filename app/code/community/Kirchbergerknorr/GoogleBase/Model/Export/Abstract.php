@@ -264,7 +264,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
     protected function _isExportableProduct($product)
     {
-        return $product->isSaleable();
+        $stockItem = $product->getStockItem();
+        return $product->isSaleable() && $stockItem->getIsInStock();
     }
 
     protected function _getDelivery($product)
@@ -481,6 +482,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         continue;
                     }
 
+                    if ($parentProduct && !$this->_isExportableProduct($parentProduct)) {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            $this->log($productData['sku'] . ' skipped as parent '.$parentProduct->getSku().' not exportable');
+                        }
+                        continue;
+                    }
+
                     $this->_exportedCount++;
                     $exportedInIteration++;
 
@@ -565,32 +573,33 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
 
                             $productIndex['price'] = $parentPrice;
                             $productIndex['special_price'] = $parentSpecialPrice;
+                        }
 
-                            $productIndex['parent_id'] = $parentProduct->getId();
-                            $productIndex['parent_status'] = $parentProduct->getStatus();
+                        $productIndex['parent_id'] = $parentProduct->getId();
+                        $productIndex['parent_visibility'] = $parentProduct->getVisibility();
+                        $productIndex['parent_status'] = $parentProduct->getStatus();
 
-                            $productIndex['deeplink'] = $parentProduct->getProductUrl();
+                        $productIndex['deeplink'] = $parentProduct->getProductUrl();
 
-                            // todo: check if simple product picture is not a placeholder
-                            $productIndex['image_small'] = (string)$this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
-                            $productIndex['image_big'] = (string)$this->_imageHelper->init($parentProduct, 'image')->resize('300');
+                        // todo: check if simple product picture is not a placeholder
+                        $productIndex['image_small'] = (string)$this->_imageHelper->init($parentProduct, 'small_image')->resize('150');
+                        $productIndex['image_big'] = (string)$this->_imageHelper->init($parentProduct, 'image')->resize('300');
 
-                            if (!$productIndex['category']) {
-                                $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
-                                $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
-                            }
+                        if (!$productIndex['category']) {
+                            $productIndex['category'] = $this->_getCategoryPath($parentProduct->getId(), $storeId);
+                            $productIndex['category_url'] = $this->_getCategoriesUrls($parentProduct, $storeId);
+                        }
 
-                            if (!$productIndex['manufacturer']) {
-                                $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
-                            }
+                        if (!$productIndex['manufacturer']) {
+                            $productIndex['manufacturer'] = $parentProduct->getAttributeText('manufacturer');
+                        }
 
-                            if (strlen($productIndex['short_description']) < 2) {
-                                $productIndex['short_description'] = $parentProduct->getShortDescription();
-                            }
+                        if (strlen($productIndex['short_description']) < 2) {
+                            $productIndex['short_description'] = $parentProduct->getShortDescription();
+                        }
 
-                            if (strlen($productIndex['description']) < 2) {
-                                $productIndex['description'] = $parentProduct->getDescription();
-                            }
+                        if (strlen($productIndex['description']) < 2) {
+                            $productIndex['description'] = $parentProduct->getDescription();
                         }
                     }
 
