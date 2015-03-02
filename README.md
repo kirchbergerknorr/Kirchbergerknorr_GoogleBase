@@ -72,6 +72,7 @@ See example in `examples/googlebase.csv`
  * `filename.csv.processing` - Partly exported CSV (currently under process)
  * `filename.csv.last`- Last exported ProductId and statistics in json format
  * `filename.csv.locked`- Lock to block parallel processes. File content is datetime of start
+ * `filename.csv.pid`- Id of running process 
 
 ## Support
 
