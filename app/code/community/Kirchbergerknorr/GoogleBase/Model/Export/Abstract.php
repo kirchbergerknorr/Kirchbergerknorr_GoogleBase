@@ -426,7 +426,9 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         $parentProduct->load($productData['parent_id']);
                     }
 
-                    $this->log($productData['sku'] . ' exporting...');
+                    if (defined('KK_GOOGLEBASE_DEBUG')) {
+                        $this->log($productData['sku'] . ' exporting...');
+                    }
 
                     if ($product->getTypeID() != 'simple') {
                         if (defined('KK_GOOGLEBASE_DEBUG')) {
