@@ -426,6 +426,8 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         $parentProduct->load($productData['parent_id']);
                     }
 
+                    $this->log($productData['sku'] . ' exporting...');
+
                     if ($product->getTypeID() != 'simple') {
                         if (defined('KK_GOOGLEBASE_DEBUG')) {
                             $this->log($productData['sku'] . ' skipped as not simple');
@@ -452,6 +454,13 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     if (!$parentProduct && $product->getVisibility() !== 4) {
                         if (defined('KK_GOOGLEBASE_DEBUG')) {
                             $this->log($productData['sku'] . ' skipped as invisible');
+                        }
+                        continue;
+                    }
+
+                    if ($parentProduct && $parentProduct->getVisibility() !== 4) {
+                        if (defined('KK_GOOGLEBASE_DEBUG')) {
+                            $this->log($productData['sku'] . ' skipped as parent invisible');
                         }
                         continue;
                     }
