@@ -482,11 +482,14 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         continue;
                     }
 
-                    if ($parentProduct && !$this->_isExportableProduct($parentProduct)) {
-                        if (defined('KK_GOOGLEBASE_DEBUG')) {
-                            $this->log($productData['sku'] . ' skipped as parent '.$parentProduct->getSku().' not exportable');
+                    if ($parentProduct) {
+                        $stockItem = $parentProduct->getStockItem();
+                        if (!$stockItem->getIsInStock()) {
+                            if (defined('KK_GOOGLEBASE_DEBUG')) {
+                                $this->log($productData['sku'] . ' skipped as parent '.$parentProduct->getSku().' not exportable');
+                            }
+                            continue;
                         }
-                        continue;
                     }
 
                     $this->_exportedCount++;
