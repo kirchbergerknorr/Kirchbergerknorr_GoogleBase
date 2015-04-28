@@ -1,7 +1,7 @@
 <?php
 /**
  * Export Product
- * 
+ *
  * filename.csv             Exported CSV
  * filename.csv.processing  Partly exported CSV (currently under process)
  * filename.csv.last        Last exported ProductId
@@ -527,11 +527,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         $productIndex['name'] .= ' - ' . $productIndex['color'];
                     }
 
-                    if ($productIndex['size'] && $productIndex['size'][0] == '-') {
-                        $productIndex['size'] = '';
-                    } else {
-                        $productIndex['name'] .= ' - ' . $productIndex['size'];
-                    }
 
                     $productIndex['price'] = Mage::helper('tax')->getPrice($product, $product->getPrice());
                     $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
@@ -578,6 +573,7 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                             $productIndex['special_price'] = $parentSpecialPrice;
                         }
 
+                        $productIndex['name'] = $parentProduct->getName();
                         $productIndex['parent_id'] = $parentProduct->getId();
                         $productIndex['parent_visibility'] = $parentProduct->getVisibility();
                         $productIndex['parent_status'] = $parentProduct->getStatus();
@@ -605,6 +601,15 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                             $productIndex['description'] = $parentProduct->getDescription();
                         }
                     }
+
+                    if ($productIndex['size'] && $productIndex['size'][0] == '-') {
+                        $productIndex['size'] = '';
+                    } else {
+                        $productIndex['name'] .= ' - ' . $productIndex['size'];
+                    }
+
+                    $productIndex['description'] = str_replace('&nbsp;', '', $productIndex['description']);
+                    $productIndex['short_description'] = str_replace('&nbsp;', '', $productIndex['short_description']);
 
                     $this->_writeItem($productIndex);
 
