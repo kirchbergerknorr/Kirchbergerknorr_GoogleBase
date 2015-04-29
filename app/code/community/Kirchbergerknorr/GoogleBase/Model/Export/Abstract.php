@@ -521,13 +521,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['image_small'] = (string)$this->_imageHelper->init($product, 'small_image')->resize('150');
                     $productIndex['image_big'] = (string)$this->_imageHelper->init($product, 'image')->resize('300');
 
-                    if ($productIndex['color'] && $productIndex['color'][0] == '-') {
-                        $productIndex['color'] = '';
-                    } else {
-                        $productIndex['name'] .= ' - ' . $productIndex['color'];
-                    }
-
-
                     $productIndex['price'] = Mage::helper('tax')->getPrice($product, $product->getPrice());
                     $productIndex['special_price'] = Mage::helper('tax')->getPrice($product, $product->getFinalPrice());
 
@@ -602,14 +595,19 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         }
                     }
 
+                    if ($productIndex['color'] && $productIndex['color'][0] == '-') {
+                        $productIndex['color'] = '';
+                    } else {
+                        $productIndex['name'] .= ' - ' . $productIndex['color'];
+                    }
+
                     if ($productIndex['size'] && $productIndex['size'][0] == '-') {
                         $productIndex['size'] = '';
                     } else {
                         $productIndex['name'] .= ' - ' . $productIndex['size'];
                     }
 
-                    $productIndex['description'] = str_replace('&nbsp;', '', $productIndex['description']);
-                    $productIndex['short_description'] = str_replace('&nbsp;', '', $productIndex['short_description']);
+                    $productIndex['name'] = htmlentities($productIndex['name']);
 
                     $this->_writeItem($productIndex);
 
