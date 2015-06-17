@@ -44,25 +44,25 @@ Process should exit in case if the last page reached.
 
 ## File Structure
 
-* sku
-* name
-* short_description
-* description
-* category
-* category_url
-* manufacturer
-* ean
-* size
-* color
-* price
-* special_price
-* image_small
-* image_big
-* deeplink
-* delivery_time
-* shipping_costs_de
-* shipping_costs_at
-* shipping_costs_ch
+* sku (simple)
+* name (configurable with - color - size)
+* short_description (simple, if empty: configurable)
+* description (simple, if empty: configurable)
+* category (simple, if empty: configurable)
+* category_url (simple, if empty: configurable)
+* manufacturer (simple, if empty: configurable)
+* ean (simple)
+* size (simple)
+* color (simple)
+* price (magento price logic)
+* special_price (magento price logic)
+* image_small (simple, if configurable: configurable)
+* image_big (simple, if configurable: configurable)
+* deeplink (simple, if configurable: configurable)
+* delivery_time  (simple)
+* shipping_costs_de (simple)
+* shipping_costs_at (simple)
+* shipping_costs_ch (simple)
 
 See example in `examples/googlebase.csv`
 
