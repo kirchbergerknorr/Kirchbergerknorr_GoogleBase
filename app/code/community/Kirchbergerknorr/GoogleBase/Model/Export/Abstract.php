@@ -431,6 +431,17 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         $this->log($productData['sku'] . ' exporting...');
                     }
 
+                    $lastInfo = json_encode(array(
+                        "totalCount" => $this->_totalCount,
+                        "timeStarted" => $this->_timeStarted,
+                        "exportedCount" => $this->_exportedCount,
+                        "lastProductId" => $product->getId(),
+                    ), JSON_PRETTY_PRINT);
+
+                    if (isset($lastInfo)) {
+                        file_put_contents($this->_csvFileName . ".last", $lastInfo);
+                    }
+
                     if ($product->getTypeID() != 'simple') {
                         if (defined('KK_GOOGLEBASE_DEBUG')) {
                             $this->log($productData['sku'] . ' skipped as not simple');
@@ -467,13 +478,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                         }
                         continue;
                     }
-
-                    $lastInfo = json_encode(array(
-                        "totalCount" => $this->_totalCount,
-                        "timeStarted" => $this->_timeStarted,
-                        "exportedCount" => $this->_exportedCount,
-                        "lastProductId" => $product->getId(),
-                    ), JSON_PRETTY_PRINT);
 
                     if (!$this->_isExportableProduct($product)) {
                         if (defined('KK_GOOGLEBASE_DEBUG')) {
@@ -610,10 +614,6 @@ abstract class Kirchbergerknorr_GoogleBase_Model_Export_Abstract extends Mage_Ca
                     $productIndex['name'] = htmlentities($productIndex['name']);
 
                     $this->_writeItem($productIndex);
-
-                    if (isset($lastInfo)) {
-                        file_put_contents($this->_csvFileName . ".last", $lastInfo);
-                    }
                 }
             }
 
